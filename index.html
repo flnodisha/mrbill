@@ -88,6 +88,7 @@
             .btn-success { background: var(--success); }
             .btn-danger  { background: var(--accent); }
             .btn-secondary { background: var(--navy); }
+            .btn:disabled { opacity: .6; cursor: not-allowed; }
 
             #fb-status { font-size: 12.5px; margin-top: 8px; padding: 6px 12px; border-radius: 20px; display: inline-block; font-weight: 500; }
             #fb-status.ok  { background: #d1fae5; color: #065f46; }
@@ -216,7 +217,7 @@
 
                 <div class="btn-group">
                     <button class="btn btn-secondary" onclick="showStep(1)">← Back to Step 1</button>
-                    <button class="btn btn-danger" onclick="window.print()" style="font-size:16px;">🖨 Print &amp; Download PDF</button>
+                    <button class="btn btn-danger" id="btn-download-save" onclick="downloadAndSave()" style="font-size:16px;">⬇️ Download &amp; Save</button>
                 </div>
             </div>
         </div>
@@ -411,7 +412,7 @@
         };
     }
 
-    // Load Data back into DOM
+    // Load Data back into DOM — dynamic teacher count from saved data
     function loadDataIntoForm(data) {
         if (!data) return;
 
@@ -420,11 +421,27 @@
             window.updateSchoolType();
         }
 
+        // Determine how many teachers actually have saved data
+        let savedTeacherCount = data.teacherCount || 1;
+        if (data.teachers) {
+            // Count only teachers that have at least one non-empty field
+            let maxWithData = 0;
+            Object.keys(data.teachers).forEach(k => {
+                const rowObj = data.teachers[k];
+                const hasData = Object.values(rowObj).some(v => v !== '' && v !== '0' && v !== null && v !== undefined);
+                if (hasData) maxWithData = Math.max(maxWithData, parseInt(k) + 1);
+            });
+            savedTeacherCount = Math.max(maxWithData, 1);
+        }
+
         const tbody = document.getElementById('teacher-tbody');
         const leaveTbody = document.getElementById('leave-tbody');
-        while (tbody.querySelectorAll('.teacher-row').length < data.teacherCount) { window._addTeacherSilent(); }
-        while (tbody.querySelectorAll('.teacher-row').length > data.teacherCount) {
-            tbody.lastElementChild.remove(); leaveTbody.lastElementChild.remove();
+
+        // Adjust teacher rows to match saved count exactly
+        while (tbody.querySelectorAll('.teacher-row').length < savedTeacherCount) { window._addTeacherSilent(); }
+        while (tbody.querySelectorAll('.teacher-row').length > savedTeacherCount) {
+            tbody.lastElementChild.remove();
+            leaveTbody.lastElementChild.remove();
         }
 
         const setVals = (selector, obj) => {
@@ -453,10 +470,10 @@
 
         window.reindexTeachers();
         window.syncUIFromPrintDom();
-        setStatus('✅ Data loaded!', 'ok');
+        setStatus(`✅ Loaded — ${savedTeacherCount} teacher${savedTeacherCount !== 1 ? 's' : ''} restored`, 'ok');
     }
 
-    // Auto-Load
+    // Auto-Load when UDISE entered
     document.getElementById('udise-key').addEventListener('input', async (e) => {
         const udise = e.target.value.trim();
         if (udise.length === 11) {
@@ -464,22 +481,36 @@
             try {
                 const docSnap = await getDoc(doc(db, "schools", udise));
                 if (docSnap.exists()) { loadDataIntoForm(docSnap.data()); }
-                else { setStatus('ℹ️ No saved data.', 'saving'); }
-            } catch(err) { setStatus('❌ Load failed', 'err'); }
+                else { setStatus('ℹ️ No saved data — start filling in the form', 'saving'); }
+            } catch(err) { setStatus('❌ Load failed: ' + err.message, 'err'); }
         } else { setStatus('', ''); }
     });
 
-    // Auto-Save
-    window.addEventListener('beforeprint', async () => {
+    // Download & Save handler — called by the button
+    window.downloadAndSave = async function() {
+        const btn = document.getElementById('btn-download-save');
         const udise = document.getElementById('udise-key').value.trim();
+
+        // Save to Firestore if UDISE provided
         if (udise.length === 11) {
-            setStatus('💾 Saving…', 'saving');
+            btn.textContent = '💾 Saving…';
+            btn.disabled = true;
+            setStatus('💾 Saving to cloud…', 'saving');
             try {
                 await setDoc(doc(db, "schools", udise), collectFormData());
-                setStatus('✅ Saved!', 'ok');
-            } catch(err) { setStatus('❌ Save failed', 'err'); }
+                setStatus('✅ Saved to cloud!', 'ok');
+            } catch(err) {
+                setStatus('⚠️ Cloud save failed — downloading anyway', 'err');
+            }
+            btn.textContent = '⬇️ Download & Save';
+            btn.disabled = false;
+        } else {
+            setStatus('ℹ️ Enter UDISE code to also save to cloud', 'saving');
         }
-    });
+
+        // Trigger browser print/PDF download
+        window.print();
+    };
 </script>
 
 
