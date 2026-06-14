@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>School Monthly Report App</title>
+    <style>
+        @media screen {
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f3f4f6; padding: 15px; margin: 0 auto; max-width: 600px; }
+            .app-header { background: #1e3a8a; color: white; padding: 20px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .step-title { font-size: 18px; font-weight: bold; color: #1f2937; margin-bottom: 15px; border-bottom: 2px solid #d1d5db; padding-bottom: 5px; }
+            .print-only, .master-table thead tr:nth-child(4) { display: none; }
+            .print-pad-row, .print-pad-leave-row { display: none !important; }
+            .header-row { display: flex; flex-direction: column; gap: 15px; background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+            .header-row th { display: flex; flex-direction: column; align-items: flex-start; border: none; font-size: 14px; font-weight: 600; color: #4b5563; padding: 0; }
+            .inline-input { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; font-size: 16px; width: 100% !important; margin-top: 5px; box-sizing: border-box; background: #f9fafb; outline: none; }
+            .inline-input:focus { border-color: #2563eb; background: white; }
+            .master-table tbody, .secondary-table tbody { display: flex; flex-direction: column; gap: 20px; }
+            .secondary-table thead { display: none; }
+            .teacher-row, .secondary-table tr { display: flex; flex-direction: column; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; margin-bottom: 10px; }
+            .teacher-row td, .secondary-table td { display: flex; flex-direction: column; padding: 10px 0; border: none; border-bottom: 1px solid #f3f4f6; }
+            .teacher-row td:last-child, .secondary-table td:last-child { border-bottom: none; }
+            .mobile-card-title { font-size: 18px !important; font-weight: bold; border-bottom: 2px solid #000 !important; padding-bottom: 10px !important; margin-bottom: 10px; color: #1f2937; }
+            .hide-on-mobile { display: none !important; }
+            .teacher-row td::before, .secondary-table td::before { content: attr(data-label); font-size: 12px; color: #6b7280; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
+            .teacher-row td.no-label::before, .secondary-table td.no-label::before { display: none; }
+            .teacher-row td.signature-cell { display: none; }
+            td input, td select { border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-size: 16px; width: 100%; box-sizing: border-box; background: #f9fafb; outline: none; -webkit-appearance: none; appearance: none; }
+            td input:focus, td select:focus { border-color: #2563eb; background: white; }
+            td input[readonly] { color: #111827; font-weight: bold; border: 1px dashed #9ca3af; background:#e5e7eb; }
+            .combo-input { display: flex; gap: 10px; flex-direction: row; align-items: center; width: 100%; }
+            .combo-input select { flex: 1; padding: 12px; font-size: 16px; }
+            .combo-input input { flex: 1.5; margin: 0; }
+            .section-title { font-size: 16px; margin: 25px 0 10px 0; color: #374151; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #2563eb; padding-bottom: 5px; display: inline-block; }
+            .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; margin-bottom: 40px; }
+            .btn { display: block; width: 100%; padding: 16px; text-align: center; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .btn-primary { background: #2563eb; color: white; }
+            .btn-primary:active { background: #1d4ed8; }
+            .btn-success { background: #10b981; color: white; margin-top: 10px; }
+            .btn-danger { background: #ef4444; color: white; }
+            .btn-secondary { background: #4b5563; color: white; }
+            .header-cell-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+            .btn-remove-row { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .btn-remove-row:active { background: #b91c1c; }
+            #print-spooler { display: none; }
+            /* Firebase status badge */
+            #fb-status { font-size: 13px; margin-top: 6px; padding: 4px 10px; border-radius: 20px; display: inline-block; }
+            #fb-status.ok { background: #d1fae5; color: #065f46; }
+            #fb-status.err { background: #fee2e2; color: #991b1b; }
+            #fb-status.saving { background: #fef3c7; color: #92400e; }
+        }
+
+        @media print {
+            @page { size: A4 landscape; margin: 8mm; }
+            body { background: white; padding: 0; margin: 0; font-family: Arial, sans-serif; }
+            #step1, #step2, .app-ui-only, .btn-group, .app-header, .step-title, .btn-remove-row { display: none !important; }
+            #print-spooler { display: block !important; width: 100%; }
+            .hide-on-mobile { display: table-cell !important; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; text-align: center; }
+            th, td { border: 1px solid #000; padding: 4px; }
+            .master-table th { background-color: transparent; font-size: 11px; font-weight: bold; }
+            .master-table .header-row { display: table-row !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; margin: 0 !important; }
+            .master-table .header-row th { display: table-cell !important; text-align: left !important; padding: 8px !important; text-transform: uppercase !important; border: 1px solid #000 !important; }
+            .master-table thead tr:nth-child(4) { display: table-row !important; }
+            .vertical-text span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; white-space: nowrap; padding: 5px 2px; font-size: 8px; }
+            .master-table tbody { display: table-row-group !important; }
+            .teacher-row { display: table-row !important; border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+            .teacher-row td { display: table-cell !important; border: 1px solid #000 !important; padding: 2px !important; height: auto !important; }
+            .teacher-row td.signature-cell { display: table-cell !important; }
+            .teacher-row td::before { display: none !important; content: none !important; }
+            .header-cell-content { display: block !important; width: auto !important; }
+            input[type="text"], input[type="number"], select, .inline-input { border: none !important; background: transparent !important; padding: 0 !important; font-size: 10px !important; text-align: center !important; color: black !important; width: 100% !important; margin: 0 !important; font-weight: bold; -webkit-appearance: none; appearance: none; }
+            .master-table .header-row .inline-input { text-align: left !important; display: inline-block !important; width: auto !important; border-bottom: 1px solid #000 !important; border-radius: 0 !important; }
+            ::placeholder { color: transparent !important; opacity: 0 !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
+            :-moz-placeholder { color: transparent !important; }
+            ::-moz-placeholder { color: transparent !important; }
+            :-ms-input-placeholder { color: transparent !important; }
+            .combo-input { display: block !important; width: 100% !important; }
+            .combo-input select { display: none !important; }
+            td.vert-data { width: 2.8%; }
+            td.vert-data input, td.vert-data select { writing-mode: vertical-rl; transform: rotate(180deg); height: 75px !important; width: 100% !important; margin: 0 auto; text-align: center; letter-spacing: 0.5px; }
+            .master-table th:nth-child(2), .master-table td:nth-child(2) { width: 14%; }
+            .signature-block { display: flex !important; flex-direction: row !important; justify-content: space-between !important; align-items: flex-end !important; padding: 0 20px !important; margin-top: 50px !important; width: 100% !important; box-sizing: border-box !important; }
+            .signature-block div { text-align: center !important; width: 22% !important; font-size: 13px !important; font-weight: bold !important; }
+            .print-only { display: flex !important; }
+            .flex-tables { display: flex; gap: 20px; }
+            .flex-tables > div { flex: 1; }
+            .page-one { display: flex; flex-direction: column; justify-content: space-between; height: 188mm; min-height: 188mm; }
+            .main-table-wrapper { flex-grow: 1; display: flex; flex-direction: column; margin-bottom: 10px; }
+            .main-table-wrapper table { flex-grow: 1; height: 100%; margin-bottom: 0; }
+            .page-break { page-break-before: always; margin-top: 20px; }
+            .secondary-table { display: table !important; white-space: normal !important; box-shadow: none !important; margin-bottom: 20px !important; border-radius: 0 !important; border-collapse: collapse !important; }
+            .secondary-table thead { display: table-header-group !important; }
+            .secondary-table tbody { display: table-row-group !important; gap: 0 !important; }
+            .secondary-table tr { display: table-row !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; border: none !important; margin: 0 !important; }
+            .secondary-table td, .secondary-table th { display: table-cell !important; padding: 2px !important; border: 1px solid #000 !important; font-size: 10px !important; }
+            .secondary-table td::before { display: none !important; content: none !important; }
+            .section-title { text-align: center; font-size: 14px; text-transform: uppercase; margin: 10px 0; color: black; border: none; padding: 0; display: block; }
+            .secondary-table td.app-ui-only { display: none !important; border: none !important; padding: 0 !important; width: 0 !important; height: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-header app-ui-only">School Data Entry App</div>
+
+    <!-- ===================== FIREBASE UDISE PANEL ===================== -->
+    <div class="app-ui-only" style="background: white; padding: 15px; border-radius: 12px; border: 2px solid #1e3a8a; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <label style="font-weight: bold; color: #1e3a8a;">📡 UDISE Code (Auto Load / Save):</label>
+        <input type="number" id="udise-key" placeholder="Enter 11-digit UDISE Code" style="width: 100%; padding: 10px; margin: 8px 0 4px; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 6px; font-size: 16px;">
+        <div id="fb-status"></div>
+    </div>
+
+    <!-- SCHOOL TYPE SELECTOR -->
+    <div class="app-ui-only" style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;">
+        <label for="schoolType" style="font-size: 16px; font-weight: bold; color: #1f2937; margin-right: 10px;">Select School Type:</label>
+        <select id="schoolType" style="padding: 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 16px; outline: none; background: #f9fafb;" onchange="updateSchoolType()">
+            <option value="UPPER_PRIMARY">Upper Primary (up to Class 8)</option>
+            <option value="PRIMARY">Primary (up to Class 5)</option>
+            <option value="HIGH_SCHOOL">High School (up to Class 10)</option>
+        </select>
+    </div>
+
+    <!-- ===================== STEP 1: SALARY & LEAVE ===================== -->
+    <div id="step1">
+        <div class="step-title app-ui-only">Step 1: Salary &amp; Leave Details</div>
+
+        <div class="page-one template-page-one">
+            <div class="main-table-wrapper">
+                <table class="master-table">
+                    <thead>
+                        <tr class="header-row">
+                            <th colspan="25">
+                                SALARY STATEMENT FOR THE MONTH OF
+                                <input type="text" class="inline-input" style="width: 120px;" placeholder="Month">
+                                20<input type="number" class="inline-input" style="width: 50px;" placeholder="YY">
+                            </th>
+                        </tr>
+                        <tr class="header-row">
+                            <th colspan="10">SCHOOL - <input type="text" class="inline-input" style="width: 60%;" placeholder="Enter School Name"></th>
+                            <th colspan="7" style="flex-direction: row; align-items: center; gap: 5px;">BLOCK - <input type="text" class="inline-input" style="width: 60%;" value="KOTPAD" placeholder="Enter Block"></th>
+                            <th colspan="8">CLUSTER - <input type="text" class="inline-input" style="width: 60%;" placeholder="Enter Cluster Name"></th>
+                        </tr>
+                        <tr class="header-row">
+                            <th colspan="17">LETTER NO. - <input type="text" class="inline-input" style="width: 70%;" placeholder="Enter Letter No."></th>
+                            <th colspan="8">DATE - <input type="text" class="inline-input" style="width: 60%;" placeholder="DD-MM-YYYY"></th>
+                        </tr>
+                        <tr>
+                            <th style="width: 3%;">SL.<br>NO</th>
+                            <th>NAME OF THE TEACHER WITH<br>DESIGNATION</th>
+                            <th class="vertical-text"><span>CASTE</span></th>
+                            <th class="vertical-text"><span>DATE OF BIRTH</span></th>
+                            <th class="vertical-text"><span>DATE OF 1ST APPOINTMENT</span></th>
+                            <th class="vertical-text"><span>DATE OF JOINING IN PRESENT SCHOOL</span></th>
+                            <th class="vertical-text"><span>DATE OF SUPERANNUATION</span></th>
+                            <th class="vertical-text"><span>QUALIFICATION</span></th>
+                            <th class="vertical-text"><span>SALARY CLAIMED FOR NO. OF DAYS</span></th>
+                            <th class="vertical-text"><span>GRADE PAY</span></th>
+                            <th class="vertical-text"><span>PAY</span></th>
+                            <th class="vertical-text"><span>D.A</span></th>
+                            <th class="vertical-text"><span>H.R.A</span></th>
+                            <th class="vertical-text"><span>O. A</span></th>
+                            <th class="vertical-text"><span>GROSS</span></th>
+                            <th class="vertical-text"><span>GPF/RECOVERY</span></th>
+                            <th class="vertical-text"><span>PRAN (PAY+G.P+D.A)*10%/RECOVERY</span></th>
+                            <th class="vertical-text"><span>L.I.C</span></th>
+                            <th class="vertical-text"><span>G.I.S/IT</span></th>
+                            <th class="vertical-text"><span>F. A</span></th>
+                            <th class="vertical-text"><span>P TAX</span></th>
+                            <th class="vertical-text"><span>OTHER RECOVERY</span></th>
+                            <th class="vertical-text"><span>TOTAL DEDUCTION</span></th>
+                            <th class="vertical-text"><span>NET PAYABLE</span></th>
+                            <th style="width: 9%;">FULL SIGNATURE OF THE<br>EMPLOYEE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacher-tbody">
+                        <tr class="teacher-row">
+                            <td data-label="TEACHER NO." class="no-label mobile-card-title">
+                                <div class="header-cell-content">
+                                    <span class="row-title-text">Teacher 1</span>
+                                    <button class="btn-remove-row app-ui-only" style="display: none;" onclick="removeSpecificTeacher(this)">❌ Remove</button>
+                                </div>
+                            </td>
+                            <td data-label="NAME WITH DESIGNATION"><input type="text" class="val-teacher-name" placeholder="E.g. John Doe - Asst Teacher"></td>
+                            <td data-label="CASTE" class="vert-data">
+                                <select>
+                                    <option value=""></option>
+                                    <option value="GEN">GEN</option>
+                                    <option value="SC">SC</option>
+                                    <option value="ST">ST</option>
+                                    <option value="OBC">OBC</option>
+                                    <option value="SEBC">SEBC</option>
+                                </select>
+                            </td>
+                            <td data-label="DATE OF BIRTH" class="vert-data"><input type="text" placeholder="DD-MM-YYYY"></td>
+                            <td data-label="DATE OF 1ST APPOINTMENT" class="vert-data"><input type="text" placeholder="DD-MM-YYYY"></td>
+                            <td data-label="DATE OF JOINING IN PRESENT SCHOOL" class="vert-data"><input type="text" placeholder="DD-MM-YYYY"></td>
+                            <td data-label="DATE OF SUPERANNUATION" class="vert-data"><input type="text" placeholder="DD-MM-YYYY"></td>
+                            <td data-label="QUALIFICATION" class="vert-data"><input type="text"></td>
+                            <td data-label="SALARY CLAIMED FOR NO. OF DAYS" class="vert-data"><input type="number"></td>
+                            <td data-label="GRADE PAY" class="vert-data"><input type="number" class="val-gradepay"></td>
+                            <td data-label="PAY" class="vert-data"><input type="number" class="val-pay input-calc"></td>
+                            <td data-label="D.A (Select %)" class="vert-data">
+                                <div class="combo-input">
+                                    <select class="val-da-perc input-calc app-ui-only dyn-perc"></select>
+                                    <input type="number" class="val-da-amount" readonly>
+                                </div>
+                            </td>
+                            <td data-label="H.R.A (Select %)" class="vert-data">
+                                <div class="combo-input">
+                                    <select class="val-hra-perc input-calc app-ui-only dyn-perc"></select>
+                                    <input type="number" class="val-hra-amount" readonly>
+                                </div>
+                            </td>
+                            <td data-label="O. A" class="vert-data"><input type="number" class="val-oa input-calc"></td>
+                            <td data-label="GROSS (AUTO)" class="vert-data"><input type="number" class="val-gross" readonly></td>
+                            <td data-label="GPF/RECOVERY" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="PRAN (PAY+G.P+D.A)*10%/RECOVERY" class="vert-data"><input type="number" class="val-deduct input-calc val-pran"></td>
+                            <td data-label="L.I.C" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="G.I.S/IT" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="F. A" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="P TAX" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="OTHER RECOVERY" class="vert-data"><input type="number" class="val-deduct input-calc"></td>
+                            <td data-label="TOTAL DEDUCTION (AUTO)" class="vert-data"><input type="number" class="val-total-deduct" readonly></td>
+                            <td data-label="NET PAYABLE (AUTO)" class="vert-data"><input type="number" class="val-net-pay" readonly></td>
+                            <td data-label="FULL SIGNATURE OF EMPLOYEE" class="signature-cell"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="signature-block print-only">
+                <div>Signature of SMC(C)</div>
+                <div>Signature of CRCC</div>
+                <div>Signature of ABEO</div>
+                <div>Signature of H.M</div>
+            </div>
+        </div>
+
+        <!-- LEAVE STATUS -->
+        <div id="ui-leave-destination" class="app-ui-only">
+            <div id="leave-status-card">
+                <div class="section-title">Leave Status (Teachers)</div>
+                <table class="secondary-table">
+                    <thead>
+                        <tr>
+                            <th>SL NO</th>
+                            <th>NAME OF THE TEACHER</th>
+                            <th>TOTAL NO. OF CL</th>
+                            <th>CL TAKEN PREVIOUSLY</th>
+                            <th>CL TAKEN DURING THE MONTH</th>
+                            <th>BALANCE OF CL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leave-tbody">
+                        <tr class="leave-row">
+                            <td data-label="TEACHER NO." class="no-label mobile-card-title">
+                                <span class="row-title-text">Leave Status: 1</span>
+                            </td>
+                            <td data-label="NAME OF THE TEACHER"><input type="text" class="val-leave-name" readonly placeholder="Auto-filled from above"></td>
+                            <td data-label="TOTAL NO. OF CL"><input type="number" class="val-leave-total" value="15" readonly></td>
+                            <td data-label="CL TAKEN PREVIOUSLY"><input type="number" class="val-leave-prev leave-calc"></td>
+                            <td data-label="CL TAKEN DURING THE MONTH"><input type="number" class="val-leave-curr leave-calc"></td>
+                            <td data-label="BALANCE OF CL"><input type="number" class="val-leave-bal" readonly></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="btn-group app-ui-only">
+            <button id="add-teacher-btn" class="btn btn-success" onclick="addTeacher()">+ Add Another Teacher</button>
+            <button class="btn btn-primary" onclick="showStep(2)">Next Step ➡️</button>
+        </div>
+    </div>
+
+    <!-- ===================== STEP 2: STRENGTH & STAFF ===================== -->
+    <div id="step2" style="display: none;">
+        <div class="step-title app-ui-only">Step 2: School Strength Details</div>
+
+        <div class="page-two template-page-two">
+            <div class="flex-tables">
+
+                <!-- ROLL STRENGTH TABLE -->
+                <div>
+                    <div class="section-title">CLASS WISE ROLL STRENGTH</div>
+                    <table class="secondary-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">CLASS</th>
+                                <th colspan="2">SC</th>
+                                <th colspan="2">ST</th>
+                                <th colspan="2">OBC</th>
+                                <th colspan="2">GENERAL</th>
+                                <th colspan="2">TOTAL</th>
+                                <th rowspan="2">GRAND<br>TOTAL</th>
+                            </tr>
+                            <tr>
+                                <th>B</th><th>G</th><th>B</th><th>G</th><th>B</th><th>G</th><th>B</th><th>G</th><th>B</th><th>G</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roll-strength-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- TEACHING STAFF TABLE -->
+                <div>
+                    <div id="print-leave-destination"></div>
+                    <div class="section-title app-ui-only">NO OF TEACHING STAFF IN POSITION</div>
+                    <table class="secondary-table staff-table">
+                        <thead>
+                            <tr style="display: table-row !important;">
+                                <th colspan="11">NO OF TEACHING STAFF IN POSITION</th>
+                            </tr>
+                            <tr>
+                                <th colspan="2">SC</th>
+                                <th colspan="2">ST</th>
+                                <th colspan="2">OBC</th>
+                                <th colspan="2">GENERAL</th>
+                                <th colspan="2">TOTAL</th>
+                                <th rowspan="2" style="vertical-align: middle;">GRAND</th>
+                            </tr>
+                            <tr>
+                                <th>M</th><th>F</th><th>M</th><th>F</th><th>M</th><th>F</th><th>M</th><th>F</th><th>M</th><th>F</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td data-label="STAFF ENTRY" class="no-label mobile-card-title app-ui-only">Staff Details</td>
+                                <td data-label="SC - MALE (M)"><input type="number" class="staff-m input-staff"></td>
+                                <td data-label="SC - FEMALE (F)"><input type="number" class="staff-f input-staff"></td>
+                                <td data-label="ST - MALE (M)"><input type="number" class="staff-m input-staff"></td>
+                                <td data-label="ST - FEMALE (F)"><input type="number" class="staff-f input-staff"></td>
+                                <td data-label="OBC - MALE (M)"><input type="number" class="staff-m input-staff"></td>
+                                <td data-label="OBC - FEMALE (F)"><input type="number" class="staff-f input-staff"></td>
+                                <td data-label="GENERAL - MALE (M)"><input type="number" class="staff-m input-staff"></td>
+                                <td data-label="GENERAL - FEMALE (F)"><input type="number" class="staff-f input-staff"></td>
+                                <td data-label="TOTAL - MALE (M)"><input type="number" class="staff-total-m" readonly style="background:#e5e7eb;"></td>
+                                <td data-label="TOTAL - FEMALE (F)"><input type="number" class="staff-total-f" readonly style="background:#e5e7eb;"></td>
+                                <td data-label="GRAND TOTAL"><input type="number" class="staff-grand-total" readonly style="background:#e5e7eb;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title">MINORITY STUDENTS OUT OF TOTAL</div>
+            <table class="secondary-table">
+                <thead>
+                    <tr id="minority-header-row"></tr>
+                </thead>
+                <tbody id="minority-body"></tbody>
+            </table>
+        </div>
+
+        <div class="btn-group app-ui-only">
+            <button class="btn btn-secondary" onclick="showStep(1)">⬅️ Back to Step 1</button>
+            <button class="btn btn-primary" onclick="window.print()" style="background: #e11d48; margin-top: 15px; font-size: 18px;">🖨️ Print &amp; Download PDF</button>
+        </div>
+    </div>
+
+    <!-- ===================== FIREBASE MODULE (ES Module) ===================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD5pzI0pMVX5nKvXtu4YmSo0BPL4SIbe1E",
+            authDomain: "mrbill-4e4af.firebaseapp.com",
+            projectId: "mrbill-4e4af",
+            storageBucket: "mrbill-4e4af.firebasestorage.app",
+            messagingSenderId: "207805692505",
+            appId: "1:207805692505:web:33b1e3d405f886b0aa8f48"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function setStatus(msg, type) {
+            const el = document.getElementById('fb-status');
+            el.textContent = msg;
+            el.className = type;
+        }
+
+        // ---------- COLLECT FORM DATA ----------
+        function collectFormData() {
+            const data = {};
+
+            // School type
+            data.schoolType = document.getElementById('schoolType').value;
+
+            // Header inputs (month, year, school name, block, cluster, letter, date)
+            const headerInputs = document.querySelectorAll('.master-table .header-row input');
+            data.headers = Array.from(headerInputs).map(i => i.value);
+
+            // Teacher rows
+            data.teachers = [];
+            document.querySelectorAll('#teacher-tbody .teacher-row').forEach(row => {
+                const inputs = row.querySelectorAll('input, select');
+                data.teachers.push(Array.from(inputs).map(i => i.value));
+            });
+
+            // Leave rows
+            data.leave = [];
+            document.querySelectorAll('#leave-tbody .leave-row').forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                data.leave.push(Array.from(inputs).map(i => i.value));
+            });
+
+            // Roll strength
+            data.rollStrength = [];
+            document.querySelectorAll('#roll-strength-body tr').forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                data.rollStrength.push(Array.from(inputs).map(i => i.value));
+            });
+
+            // Staff
+            const staffInputs = document.querySelectorAll('.staff-table input');
+            data.staff = Array.from(staffInputs).map(i => i.value);
+
+            // Minority
+            data.minority = [];
+            document.querySelectorAll('#minority-body tr').forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                data.minority.push(Array.from(inputs).map(i => i.value));
+            });
+
+            return data;
+        }
+
+        // ---------- LOAD DATA INTO FORM ----------
+        function loadDataIntoForm(data) {
+            if (!data) return;
+
+            // Restore school type first so dynamic tables are rebuilt
+            if (data.schoolType) {
+                document.getElementById('schoolType').value = data.schoolType;
+                window.updateSchoolType();
+            }
+
+            // Header inputs
+            if (data.headers) {
+                const headerInputs = document.querySelectorAll('.master-table .header-row input');
+                data.headers.forEach((val, i) => { if (headerInputs[i]) headerInputs[i].value = val; });
+            }
+
+            // Teacher rows — add extra rows if needed
+            if (data.teachers && data.teachers.length > 0) {
+                const tbody = document.getElementById('teacher-tbody');
+                const leaveTbody = document.getElementById('leave-tbody');
+                while (tbody.querySelectorAll('.teacher-row').length < data.teachers.length) {
+                    window._addTeacherSilent();
+                }
+                data.teachers.forEach((vals, idx) => {
+                    const row = tbody.querySelectorAll('.teacher-row')[idx];
+                    if (!row) return;
+                    const inputs = row.querySelectorAll('input, select');
+                    vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
+                });
+            }
+
+            // Leave rows
+            if (data.leave && data.leave.length > 0) {
+                const leaveTbody = document.getElementById('leave-tbody');
+                data.leave.forEach((vals, idx) => {
+                    const row = leaveTbody.querySelectorAll('.leave-row')[idx];
+                    if (!row) return;
+                    const inputs = row.querySelectorAll('input');
+                    vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
+                });
+            }
+
+            // Roll strength
+            if (data.rollStrength) {
+                const rows = document.querySelectorAll('#roll-strength-body tr');
+                data.rollStrength.forEach((vals, idx) => {
+                    if (!rows[idx]) return;
+                    const inputs = rows[idx].querySelectorAll('input');
+                    vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
+                });
+            }
+
+            // Staff
+            if (data.staff) {
+                const staffInputs = document.querySelectorAll('.staff-table input');
+                data.staff.forEach((val, i) => { if (staffInputs[i]) staffInputs[i].value = val; });
+            }
+
+            // Minority
+            if (data.minority) {
+                const rows = document.querySelectorAll('#minority-body tr');
+                data.minority.forEach((vals, idx) => {
+                    if (!rows[idx]) return;
+                    const inputs = rows[idx].querySelectorAll('input');
+                    vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
+                });
+            }
+
+            window.reindexTeachers();
+            setStatus('✅ Data loaded successfully!', 'ok');
+        }
+
+        // ---------- AUTO-LOAD ON UDISE INPUT ----------
+        document.getElementById('udise-key').addEventListener('input', async (e) => {
+            const udise = e.target.value.trim();
+            if (udise.length === 11) {
+                setStatus('⏳ Loading...', 'saving');
+                try {
+                    const docSnap = await getDoc(doc(db, "schools", udise));
+                    if (docSnap.exists()) {
+                        loadDataIntoForm(docSnap.data());
+                    } else {
+                        setStatus('ℹ️ No saved data for this UDISE. Start entering!', 'saving');
+                    }
+                } catch (err) {
+                    setStatus('❌ Load failed: ' + err.message, 'err');
+                }
+            } else {
+                setStatus('', '');
+            }
+        });
+
+        // ---------- AUTO-SAVE ON PRINT ----------
+        window.addEventListener('beforeprint', async () => {
+            const udise = document.getElementById('udise-key').value.trim();
+            if (udise.length === 11) {
+                setStatus('💾 Saving...', 'saving');
+                try {
+                    // Fill blank number fields with 0 for clean printout
+                    document.querySelectorAll('input[type="number"]').forEach(el => {
+                        if (el.value === '') el.value = '0';
+                    });
+                    const dataToSave = collectFormData();
+                    await setDoc(doc(db, "schools", udise), dataToSave);
+                    setStatus('✅ Saved to cloud!', 'ok');
+                } catch (err) {
+                    setStatus('❌ Save failed: ' + err.message, 'err');
+                }
+            }
+        });
+    </script>
+
+    <!-- ===================== MAIN APP LOGIC (Classic Script) ===================== -->
+    <script>
+        // Expose addTeacher silently for Firebase loader
+        window._addTeacherSilent = function() {
+            const tbody = document.getElementById('teacher-tbody');
+            const rows = tbody.querySelectorAll('.teacher-row');
+            const lastRow = rows[rows.length - 1];
+            const newRow = lastRow.cloneNode(true);
+            newRow.querySelectorAll('input').forEach(input => input.value = '');
+            newRow.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+            tbody.appendChild(newRow);
+
+            const leaveTbody = document.getElementById('leave-tbody');
+            const leaveRows = leaveTbody.querySelectorAll('.leave-row');
+            const lastLeaveRow = leaveRows[leaveRows.length - 1];
+            const newLeaveRow = lastLeaveRow.cloneNode(true);
+            newLeaveRow.querySelectorAll('input:not(.val-leave-total)').forEach(input => input.value = '');
+            newLeaveRow.querySelector('.val-leave-bal').value = 15;
+            leaveTbody.appendChild(newLeaveRow);
+        };
+
+        // Populate percentage dropdowns
+        let percOptions = '<option value="0">0%</option>';
+        for (let i = 1; i <= 150; i++) {
+            percOptions += `<option value="${i}">${i}%</option>`;
+        }
+        document.querySelectorAll('.dyn-perc').forEach(select => {
+            select.innerHTML = percOptions;
+        });
+
+        // --- DYNAMIC SCHOOL TYPE ---
+        function updateSchoolType() {
+            const type = document.getElementById('schoolType').value;
+            let rollClasses = [], minClasses = [];
+
+            if (type === 'PRIMARY') {
+                rollClasses = ["SHISHU VATIKA", "I", "II", "III", "IV", "V", "TOTAL"];
+                minClasses = ["S.B.", "I", "II", "III", "IV", "V"];
+            } else if (type === 'HIGH_SCHOOL') {
+                rollClasses = ["SHISHU VATIKA", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "TOTAL"];
+                minClasses = ["S.B.", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+            } else {
+                rollClasses = ["SHISHU VATIKA", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "TOTAL"];
+                minClasses = ["S.B.", "I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
+            }
+
+            const rollTbody = document.getElementById('roll-strength-body');
+            rollTbody.innerHTML = '';
+            rollClasses.forEach(cls => {
+                const tr = document.createElement('tr');
+                const isTotal = cls === "TOTAL";
+                tr.classList.add(isTotal ? 'roll-total-row' : 'roll-data-row');
+                tr.innerHTML = `
+                    <td data-label="CLASS" class="no-label mobile-card-title">${cls}</td>
+                    <td data-label="SC - BOYS (B)"><input type="number" class="roll-sc-b ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="SC - GIRLS (G)"><input type="number" class="roll-sc-g ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="ST - BOYS (B)"><input type="number" class="roll-st-b ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="ST - GIRLS (G)"><input type="number" class="roll-st-g ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="OBC - BOYS (B)"><input type="number" class="roll-obc-b ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="OBC - GIRLS (G)"><input type="number" class="roll-obc-g ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="GENERAL - BOYS (B)"><input type="number" class="roll-gen-b ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="GENERAL - GIRLS (G)"><input type="number" class="roll-gen-g ${isTotal?'':'roll-input'}" ${isTotal?'readonly style="background:#e5e7eb;"':''}></td>
+                    <td data-label="TOTAL - BOYS (B)"><input type="number" class="roll-tot-b" readonly style="background:#e5e7eb;"></td>
+                    <td data-label="TOTAL - GIRLS (G)"><input type="number" class="roll-tot-g" readonly style="background:#e5e7eb;"></td>
+                    <td data-label="GRAND TOTAL"><input type="number" class="roll-grand" readonly style="background:#e5e7eb;"></td>
+                `;
+                rollTbody.appendChild(tr);
+            });
+
+            const thead = document.getElementById('minority-header-row');
+            thead.innerHTML = `<th>CLASS TYPE</th><th>GENDER</th>` + minClasses.map(c => `<th>${c}</th>`).join('');
+
+            const tbody = document.getElementById('minority-body');
+            tbody.innerHTML = '';
+            [
+                { type: "MUSLIM", labelM: "MUSLIM - BOYS (B)", labelF: "MUSLIM - GIRLS (G)" },
+                { type: "OTHER MINORITY", labelM: "OTHER - BOYS (B)", labelF: "OTHER - GIRLS (G)" }
+            ].forEach(cat => {
+                const tr1 = document.createElement('tr');
+                tr1.innerHTML = `<td rowspan="2" class="hide-on-mobile print-cell" style="vertical-align: middle; font-weight:bold;">${cat.type}</td>
+                                 <td data-label="CATEGORY" class="no-label mobile-card-title">${cat.labelM}</td>` +
+                                 minClasses.map(c => `<td data-label="CLASS ${c}"><input type="number"></td>`).join('');
+                const tr2 = document.createElement('tr');
+                tr2.innerHTML = `<td data-label="CATEGORY" class="no-label mobile-card-title">${cat.labelF}</td>` +
+                                 minClasses.map(c => `<td data-label="CLASS ${c}"><input type="number"></td>`).join('');
+                tbody.appendChild(tr1);
+                tbody.appendChild(tr2);
+            });
+        }
+        window.updateSchoolType = updateSchoolType;
+        updateSchoolType();
+
+        // --- ROLL STRENGTH CALCULATION ---
+        document.getElementById('roll-strength-body').addEventListener('input', function(e) {
+            if (e.target.classList.contains('roll-input')) {
+                const row = e.target.closest('tr');
+                if (!row.classList.contains('roll-total-row')) {
+                    const scB = parseInt(row.querySelector('.roll-sc-b').value) || 0;
+                    const stB = parseInt(row.querySelector('.roll-st-b').value) || 0;
+                    const obcB = parseInt(row.querySelector('.roll-obc-b').value) || 0;
+                    const genB = parseInt(row.querySelector('.roll-gen-b').value) || 0;
+                    const totB = scB + stB + obcB + genB;
+                    row.querySelector('.roll-tot-b').value = totB || '';
+
+                    const scG = parseInt(row.querySelector('.roll-sc-g').value) || 0;
+                    const stG = parseInt(row.querySelector('.roll-st-g').value) || 0;
+                    const obcG = parseInt(row.querySelector('.roll-obc-g').value) || 0;
+                    const genG = parseInt(row.querySelector('.roll-gen-g').value) || 0;
+                    const totG = scG + stG + obcG + genG;
+                    row.querySelector('.roll-tot-g').value = totG || '';
+                    row.querySelector('.roll-grand').value = (totB + totG) || '';
+                }
+
+                const cols = ['roll-sc-b','roll-sc-g','roll-st-b','roll-st-g','roll-obc-b','roll-obc-g','roll-gen-b','roll-gen-g','roll-tot-b','roll-tot-g','roll-grand'];
+                const dataRows = document.querySelectorAll('.roll-data-row');
+                const totalRow = document.querySelector('.roll-total-row');
+
+                cols.forEach(col => {
+                    let sum = 0;
+                    dataRows.forEach(r => { sum += parseInt(r.querySelector('.' + col).value) || 0; });
+                    if (totalRow) totalRow.querySelector('.' + col).value = sum || '';
+                });
+            }
+        });
+
+        // --- SALARY & NAME SYNC ---
+        document.getElementById('teacher-tbody').addEventListener('input', function(e) {
+            const row = e.target.closest('tr');
+            if (e.target.classList.contains('val-teacher-name')) {
+                const rowIndex = Array.from(row.parentNode.children).indexOf(row);
+                const leaveRow = document.getElementById('leave-tbody').children[rowIndex];
+                if (leaveRow) leaveRow.querySelector('.val-leave-name').value = e.target.value;
+            }
+            if (e.target.classList.contains('input-calc') || e.target.classList.contains('val-gradepay')) {
+                calculateRowFinances(row, e.target);
+            }
+        });
+
+        function calculateRowFinances(row, targetInput) {
+            const pay = parseFloat(row.querySelector('.val-pay').value) || 0;
+            const daPerc = parseFloat(row.querySelector('.val-da-perc').value) || 0;
+            const hraPerc = parseFloat(row.querySelector('.val-hra-perc').value) || 0;
+            const oa = parseFloat(row.querySelector('.val-oa').value) || 0;
+            const daAmount = Math.round(pay * (daPerc / 100));
+            const hraAmount = Math.round(pay * (hraPerc / 100));
+            row.querySelector('.val-da-amount').value = daAmount || '';
+            row.querySelector('.val-hra-amount').value = hraAmount || '';
+            if (targetInput && (targetInput.classList.contains('val-pay') || targetInput.classList.contains('val-da-perc'))) {
+                row.querySelector('.val-pran').value = Math.round((pay + daAmount) * 0.10) || '';
+            }
+            const gross = Math.round(pay + daAmount + hraAmount + oa);
+            row.querySelector('.val-gross').value = gross || '';
+            let totalDeductions = 0;
+            row.querySelectorAll('.val-deduct').forEach(input => { totalDeductions += parseFloat(input.value) || 0; });
+            row.querySelector('.val-total-deduct').value = Math.round(totalDeductions) || '';
+            row.querySelector('.val-net-pay').value = Math.round(gross - totalDeductions) || '';
+        }
+
+        // --- LEAVE CALCULATION ---
+        document.getElementById('leave-tbody').addEventListener('input', function(e) {
+            if (e.target.classList.contains('leave-calc')) {
+                const row = e.target.closest('tr');
+                const totalCL = 15;
+                const prevCL = parseFloat(row.querySelector('.val-leave-prev').value) || 0;
+                const currCL = parseFloat(row.querySelector('.val-leave-curr').value) || 0;
+                row.querySelector('.val-leave-bal').value = totalCL - (prevCL + currCL);
+            }
+        });
+
+        // --- STAFF CALCULATION ---
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('input-staff')) {
+                const row = e.target.closest('tr');
+                let totalM = 0, totalF = 0;
+                row.querySelectorAll('.staff-m').forEach(i => { totalM += parseInt(i.value) || 0; });
+                row.querySelectorAll('.staff-f').forEach(i => { totalF += parseInt(i.value) || 0; });
+                row.querySelector('.staff-total-m').value = totalM || '';
+                row.querySelector('.staff-total-f').value = totalF || '';
+                row.querySelector('.staff-grand-total').value = (totalM + totalF) || '';
+            }
+        });
+
+        // --- NAVIGATION ---
+        function showStep(step) {
+            document.getElementById('step1').style.display = (step === 1) ? 'block' : 'none';
+            document.getElementById('step2').style.display = (step === 2) ? 'block' : 'none';
+            window.scrollTo(0, 0);
+        }
+
+        // --- REINDEX ---
+        function reindexTeachers() {
+            const tbody = document.getElementById('teacher-tbody');
+            const leaveTbody = document.getElementById('leave-tbody');
+            const rows = tbody.querySelectorAll('.teacher-row');
+            const leaveRows = leaveTbody.querySelectorAll('.leave-row');
+
+            rows.forEach((row, index) => {
+                row.querySelector('.row-title-text').innerText = "Teacher " + (index + 1);
+                const btn = row.querySelector('.btn-remove-row');
+                if (btn) btn.style.display = rows.length > 1 ? 'block' : 'none';
+            });
+            leaveRows.forEach((row, index) => {
+                row.querySelector('.row-title-text').innerText = "Leave Status: " + (index + 1);
+            });
+
+            // Refresh percentage dropdowns on new rows
+            document.querySelectorAll('.dyn-perc').forEach(select => {
+                if (!select.innerHTML) select.innerHTML = percOptions;
+            });
+        }
+        window.reindexTeachers = reindexTeachers;
+
+        // --- ADD TEACHER ---
+        function addTeacher() {
+            window._addTeacherSilent();
+            reindexTeachers();
+            const tbody = document.getElementById('teacher-tbody');
+            const rows = tbody.querySelectorAll('.teacher-row');
+            rows[rows.length - 1].scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        // --- REMOVE SPECIFIC TEACHER ---
+        function removeSpecificTeacher(btnElement) {
+            const row = btnElement.closest('tr');
+            const tbody = row.parentNode;
+            if (tbody.children.length <= 1) return;
+            const rowIndex = Array.from(tbody.children).indexOf(row);
+            tbody.removeChild(row);
+            const leaveTbody = document.getElementById('leave-tbody');
+            leaveTbody.removeChild(leaveTbody.children[rowIndex]);
+            reindexTeachers();
+        }
+
+        // --- PRINT SPOOLER ---
+        window.addEventListener('beforeprint', function() {
+            document.querySelectorAll('input').forEach(el => el.setAttribute('value', el.value));
+            document.querySelectorAll('select').forEach(el => {
+                Array.from(el.options).forEach((opt, idx) => {
+                    if (idx === el.selectedIndex) opt.setAttribute('selected', 'selected');
+                    else opt.removeAttribute('selected');
+                });
+            });
+
+            const spooler = document.createElement('div');
+            spooler.id = 'print-spooler';
+
+            const teacherRows = Array.from(document.querySelectorAll('#teacher-tbody .teacher-row'));
+            const leaveRows = Array.from(document.querySelectorAll('#leave-tbody .leave-row'));
+
+            const numSets = Math.ceil(teacherRows.length / 4) || 1;
+            const page1Template = document.querySelector('.template-page-one').cloneNode(true);
+            const page2Template = document.querySelector('.template-page-two').cloneNode(true);
+
+            const leaveCardTemplate = document.querySelector('#leave-status-card').cloneNode(true);
+            page2Template.querySelector('#print-leave-destination').appendChild(leaveCardTemplate);
+
+            for (let s = 0; s < numSets; s++) {
+                const p1 = page1Template.cloneNode(true);
+                const p2 = page2Template.cloneNode(true);
+                const tBody = p1.querySelector('#teacher-tbody');
+                const lBody = p2.querySelector('#leave-tbody');
+                tBody.innerHTML = '';
+                lBody.innerHTML = '';
+
+                for (let i = 0; i < 4; i++) {
+                    const dataIndex = (s * 4) + i;
+                    if (dataIndex < teacherRows.length) {
+                        const tRow = teacherRows[dataIndex].cloneNode(true);
+                        tRow.querySelector('.row-title-text').innerText = (dataIndex + 1);
+                        tBody.appendChild(tRow);
+                        const lRow = leaveRows[dataIndex].cloneNode(true);
+                        const lTitle = lRow.querySelector('.row-title-text');
+                        if (lTitle) lTitle.innerText = (dataIndex + 1);
+                        lBody.appendChild(lRow);
+                    } else {
+                        const tRow = teacherRows[0].cloneNode(true);
+                        tRow.querySelector('.row-title-text').innerText = (dataIndex + 1);
+                        tRow.querySelectorAll('input').forEach(inp => { inp.removeAttribute('value'); inp.value = ''; });
+                        const btn = tRow.querySelector('.btn-remove-row');
+                        if (btn) btn.remove();
+                        tBody.appendChild(tRow);
+                        const lRow = leaveRows[0].cloneNode(true);
+                        const lTitle = lRow.querySelector('.row-title-text');
+                        if (lTitle) lTitle.innerText = (dataIndex + 1);
+                        lRow.querySelectorAll('input:not(.val-leave-total)').forEach(inp => { inp.removeAttribute('value'); inp.value = ''; });
+                        lRow.querySelector('.val-leave-bal').removeAttribute('placeholder');
+                        lBody.appendChild(lRow);
+                    }
+                }
+
+                spooler.appendChild(p1);
+                const pb1 = document.createElement('div');
+                pb1.className = 'page-break print-only';
+                spooler.appendChild(pb1);
+                spooler.appendChild(p2);
+
+                if (s < numSets - 1) {
+                    const pb2 = document.createElement('div');
+                    pb2.className = 'page-break print-only';
+                    spooler.appendChild(pb2);
+                }
+            }
+
+            document.body.appendChild(spooler);
+        });
+
+        window.addEventListener('afterprint', function() {
+            const spooler = document.getElementById('print-spooler');
+            if (spooler) spooler.remove();
+        });
+    </script>
+</body>
+</html>
