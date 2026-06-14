@@ -383,6 +383,24 @@
             el.className = type;
         }
 
+        // ---------- HELPERS ----------
+        // Firestore does not support nested arrays.
+        // rowsToObjects converts an array-of-arrays into an array-of-objects
+        // so it can be safely stored, then objectsToRows reverses it on load.
+        function rowsToObjects(rows) {
+            return rows.map(vals =>
+                vals.reduce((obj, v, i) => { obj['f' + i] = v; return obj; }, {})
+            );
+        }
+        function objectsToRows(objs) {
+            return objs.map(obj => {
+                const keys = Object.keys(obj).sort((a, b) =>
+                    parseInt(a.slice(1)) - parseInt(b.slice(1))
+                );
+                return keys.map(k => obj[k]);
+            });
+        }
+
         // ---------- COLLECT FORM DATA ----------
         function collectFormData() {
             const data = {};
@@ -394,37 +412,41 @@
             const headerInputs = document.querySelectorAll('.master-table .header-row input');
             data.headers = Array.from(headerInputs).map(i => i.value);
 
-            // Teacher rows
-            data.teachers = [];
+            // Teacher rows — stored as array of objects to avoid nested arrays
+            const teacherRows = [];
             document.querySelectorAll('#teacher-tbody .teacher-row').forEach(row => {
                 const inputs = row.querySelectorAll('input, select');
-                data.teachers.push(Array.from(inputs).map(i => i.value));
+                teacherRows.push(Array.from(inputs).map(i => i.value));
             });
+            data.teachers = rowsToObjects(teacherRows);
 
             // Leave rows
-            data.leave = [];
+            const leaveRows = [];
             document.querySelectorAll('#leave-tbody .leave-row').forEach(row => {
                 const inputs = row.querySelectorAll('input');
-                data.leave.push(Array.from(inputs).map(i => i.value));
+                leaveRows.push(Array.from(inputs).map(i => i.value));
             });
+            data.leave = rowsToObjects(leaveRows);
 
             // Roll strength
-            data.rollStrength = [];
+            const rollRows = [];
             document.querySelectorAll('#roll-strength-body tr').forEach(row => {
                 const inputs = row.querySelectorAll('input');
-                data.rollStrength.push(Array.from(inputs).map(i => i.value));
+                rollRows.push(Array.from(inputs).map(i => i.value));
             });
+            data.rollStrength = rowsToObjects(rollRows);
 
-            // Staff
+            // Staff (flat array of primitives — already safe)
             const staffInputs = document.querySelectorAll('.staff-table input');
             data.staff = Array.from(staffInputs).map(i => i.value);
 
             // Minority
-            data.minority = [];
+            const minorityRows = [];
             document.querySelectorAll('#minority-body tr').forEach(row => {
                 const inputs = row.querySelectorAll('input');
-                data.minority.push(Array.from(inputs).map(i => i.value));
+                minorityRows.push(Array.from(inputs).map(i => i.value));
             });
+            data.minority = rowsToObjects(minorityRows);
 
             return data;
         }
@@ -447,12 +469,12 @@
 
             // Teacher rows — add extra rows if needed
             if (data.teachers && data.teachers.length > 0) {
+                const teacherVals = objectsToRows(data.teachers);
                 const tbody = document.getElementById('teacher-tbody');
-                const leaveTbody = document.getElementById('leave-tbody');
-                while (tbody.querySelectorAll('.teacher-row').length < data.teachers.length) {
+                while (tbody.querySelectorAll('.teacher-row').length < teacherVals.length) {
                     window._addTeacherSilent();
                 }
-                data.teachers.forEach((vals, idx) => {
+                teacherVals.forEach((vals, idx) => {
                     const row = tbody.querySelectorAll('.teacher-row')[idx];
                     if (!row) return;
                     const inputs = row.querySelectorAll('input, select');
@@ -462,8 +484,9 @@
 
             // Leave rows
             if (data.leave && data.leave.length > 0) {
+                const leaveVals = objectsToRows(data.leave);
                 const leaveTbody = document.getElementById('leave-tbody');
-                data.leave.forEach((vals, idx) => {
+                leaveVals.forEach((vals, idx) => {
                     const row = leaveTbody.querySelectorAll('.leave-row')[idx];
                     if (!row) return;
                     const inputs = row.querySelectorAll('input');
@@ -473,15 +496,16 @@
 
             // Roll strength
             if (data.rollStrength) {
+                const rollVals = objectsToRows(data.rollStrength);
                 const rows = document.querySelectorAll('#roll-strength-body tr');
-                data.rollStrength.forEach((vals, idx) => {
+                rollVals.forEach((vals, idx) => {
                     if (!rows[idx]) return;
                     const inputs = rows[idx].querySelectorAll('input');
                     vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
                 });
             }
 
-            // Staff
+            // Staff (flat array — no conversion needed)
             if (data.staff) {
                 const staffInputs = document.querySelectorAll('.staff-table input');
                 data.staff.forEach((val, i) => { if (staffInputs[i]) staffInputs[i].value = val; });
@@ -489,8 +513,9 @@
 
             // Minority
             if (data.minority) {
+                const minorityVals = objectsToRows(data.minority);
                 const rows = document.querySelectorAll('#minority-body tr');
-                data.minority.forEach((vals, idx) => {
+                minorityVals.forEach((vals, idx) => {
                     if (!rows[idx]) return;
                     const inputs = rows[idx].querySelectorAll('input');
                     vals.forEach((val, i) => { if (inputs[i]) inputs[i].value = val; });
